@@ -9,7 +9,8 @@ scelta_dist = 'n'
 #scelta_dist = 'e'
 
 M = 100  # n. campioni
-N = math.ceil(M / math.log(M, 2))  # grado polinomio
+N_pdf = math.ceil(M / math.log(M, 2))  # grado BP per PDF
+N_cdf = math.ceil(M / math.log(M, 2)) ** 2  # grado BP per CDF
 
 distribuzione = None
 nome_dist = ""
@@ -56,8 +57,8 @@ for i in range(10):
     curr_asse_x = np.linspace(a, b, num_points)
     array_asse_x.append(curr_asse_x)
 
-    cdf_stima = calculate_bernstein_cdf(cdf_gradino, N, a, b, curr_asse_x)
-    pdf_stima = calculate_bernstein_pdf(cdf_gradino, N, a, b, curr_asse_x)
+    cdf_stima = calculate_bernstein_cdf(cdf_gradino, N_cdf, a, b, curr_asse_x)
+    pdf_stima = calculate_bernstein_pdf(cdf_gradino, N_pdf, a, b, curr_asse_x)
 
     array_cdf_stima.append(cdf_stima)
     array_pdf_stima.append(pdf_stima)
@@ -97,7 +98,7 @@ plt.ylabel("y")
 # Secondo plot: CDF N = M / log(M)
 index = 2
 plt.subplot(nrows, ncols, index)
-plt.title(f"Confronto CDF - {nome_dist} - M={M}, N={N}")
+plt.title(f"Confronto CDF - {nome_dist} - M={M}, N={N_cdf}")
 plt.plot(asse_x_generale, cdf_vera, 'k-', linewidth=3, label='CDF Teorica')
 for i, y_cdf_stima in enumerate(array_cdf_stima):
     plt.plot(array_asse_x[i], y_cdf_stima, 'k-', linewidth=0.5)
@@ -121,7 +122,7 @@ plt.ylabel("y")
 # Terzo plot: PDF N = M / log(M)
 index = 4
 plt.subplot(nrows, ncols, index)
-plt.title(f"Confronto PDF - {nome_dist} - M={M}, N={N}")
+plt.title(f"Confronto PDF - {nome_dist} - M={M}, N={N_pdf}")
 plt.plot(asse_x_generale, pdf_vera, 'k-', linewidth=3, label='PDF Teorica')
 for i, y_pdf_stima in enumerate(array_pdf_stima):
     plt.plot(array_asse_x[i], y_pdf_stima, 'k-', linewidth=0.5)

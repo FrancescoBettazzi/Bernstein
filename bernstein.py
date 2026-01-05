@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.special import comb
@@ -44,3 +46,26 @@ def calculate_bernstein_pdf(cdf_gradino, N, a, b, asse_x):
         B_N_pdf.append(fattore_di_scala * somma)
 
     return B_N_pdf
+
+# BE_N(cdf, x) = SOMMA(n=0,...,N){cdf[log(N/n)]*binomiale(N n)*e^(-nx)*[1-e^x]^(N-n)}
+def calculate_bernstein_exponential_cdf(cdf_gradino, N, asse_y):
+    BE_N_cdf = []
+
+    for y in asse_y:
+        x = math.e ** (-y)
+
+        somma = 0.0
+
+        for n in range(N + 1):  # n = 0, ... , N
+            weight = comb(N, n) * (x ** n) * ((1 - x) ** (N - n))
+            if n == 0:
+                cdf_val = 1.0
+            else:
+                arg = -math.log(n / N, math.e)
+                cdf_val = cdf_gradino(arg)
+
+            somma += cdf_val * weight
+
+        BE_N_cdf.append(somma)
+
+    return BE_N_cdf
