@@ -1,71 +1,157 @@
-import math
-
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.special import comb
+from scipy.special import comb, gammaln
 
 
-def create_cdf_gradino(campioni):
+def create_ecdf(campioni):
+    """
+    Crea la funzione ECDF (Empirical CDF) interpolata.
+    Restituisce un oggetto chiamabile vettorizzato.
+    """
     M = len(campioni)
     campioni_ordinati = np.sort(campioni)
     y_gradino = np.arange(1, M + 1) / M
 
-    cdf_gradino = interp1d(campioni_ordinati, y_gradino, kind='previous', bounds_error=False, fill_value=(0.0, 1.0))
+    # interp1d gestisce nativamente input vettoriali (array numpy)
+    ecdf = interp1d(
+        campioni_ordinati,
+        y_gradino,
+        kind='previous',
+        bounds_error=False,
+        fill_value=(0.0, 1.0)
+    )
 
-    return cdf_gradino
+    return ecdf
 
 
-# B_N(cdf, x) = SOMMA(n=0,..,N){cdf(n/N)*binomiale(N n)*(x^n)*(1-x)^(N-n)}
-def calculate_bernstein_cdf(cdf_gradino, N, a, b, asse_x):
-    B_N_cdf = []
-    for x in asse_x:
-        z = (x - a) / (b - a)  # perché supporto finito [a, b]
-        z = np.clip(z, 0.0, 1.0)
-        somma = 0.0
-        for n in range(N + 1):  # n = 0, ... , N
-            # somma += cdf_gradino(n / N) * comb(N, n) * (z ** n) * ((1 - z) ** (N - n))
-            # NB: la x deve essere tra a e b, quindi va usato a + (b-a)*(n/N)
-            somma += cdf_gradino(a + (b - a) * (n / N)) * comb(N, n) * (z ** n) * ((1 - z) ** (N - n))
+'''def get_bernstein_basis(z, N):
+    """
+    Funzione helper per calcolare la matrice delle basi.
+    Restituisce una matrice di shape (len(z), N+1)
+    """
+    # Assicuriamo che z sia colonna (M, 1) e n sia riga (1, N+1) per il broadcasting
+    z = z[:, np.newaxis]
+    n = np.arange(N + 1)
 
-        B_N_cdf.append(somma)
+    # Calcolo vettorializzato dei coefficienti binomiali e delle potenze
+    # (N su n) * z^n * (1-z)^(N-n)
+    coeffs = comb(N, n)
+    basis = coeffs * (z ** n) * ((1 - z) ** (N - n))
 
-    return B_N_cdf
+    return basis'''
 
-# b_N(cdf, x) = N * SOMMA(n=0,...,N-1){(cdf[(k+1)/n]-cdf[k/n])*binomiale(N n)*(x^n)*(1-x)^(N-n)}
-def calculate_bernstein_pdf(cdf_gradino, N, a, b, asse_x):
-    B_N_pdf = []
-    for x in asse_x:
-        z = (x - a) / (b - a)  # perché supporto finito [a, b]
-        z = np.clip(z, 0.0, 1.0)
-        somma = 0.0
-        for n in range(N):  # n = 0, ... , N - 1
-            somma += (cdf_gradino(a + (b - a) * ((n + 1) / N)) - cdf_gradino(a + (b - a) * (n / N))) * comb(N, n) * (z ** n) * ((1 - z) ** (N - n))
 
-        fattore_di_scala = (N / (b - a))
-        # NB: da formula sarebbe N, se z fosse definito in [0,1]. Ma siccome ho che z = (x - a) / (b - a) => devo moltiplicare N per la derivata di z [1/(b-a)]
-        B_N_pdf.append(fattore_di_scala * somma)
+def get_bernstein_basis(z, N):
+    """
+    Funzione helper per calcolare la matrice delle basi.
+    VERSIONE STABILE (Log-Sum-Exp) per N grandi.
+    Restituisce una matrice di shape (len(z), N+1)
+    """
+    # Assicuriamo che z sia colonna (M, 1) e n sia riga (1, N+1) per il broadcasting
+    z = z[:, np.newaxis]
+    n = np.arange(N + 1)
 
-    return B_N_pdf
+    # --- INIZIO MODIFICA PER STABILITÀ NUMERICA ---
 
-# BE_N(cdf, x) = SOMMA(n=0,...,N){cdf[log(N/n)]*binomiale(N n)*e^(-nx)*[1-e^x]^(N-n)}
-def calculate_bernstein_exponential_cdf(cdf_gradino, N, asse_y):
-    BE_N_cdf = []
+    # 1. Calcolo Logaritmo del Coefficiente Binomiale
+    # log(N!) - log(n!) - log((N-n)!)
+    log_coeffs = gammaln(N + 1) - gammaln(n + 1) - gammaln(N - n + 1)
 
-    for y in asse_y:
-        x = math.e ** (-y)
+    # 2. Gestione sicura dei logaritmi per le potenze (evita log(0))
+    eps = 1e-16
+    z_safe = np.clip(z, eps, 1.0 - eps)
 
-        somma = 0.0
+    # 3. Calcolo esponenti nel dominio log
+    # log(z^n) -> n * log(z)
+    log_pow_z = n * np.log(z_safe)
+    # log((1-z)^(N-n)) -> (N-n) * log(1-z)
+    log_pow_1_z = (N - n) * np.log(1.0 - z_safe)
 
-        for n in range(N + 1):  # n = 0, ... , N
-            weight = comb(N, n) * (x ** n) * ((1 - x) ** (N - n))
-            if n == 0:
-                cdf_val = 1.0
-            else:
-                arg = -math.log(n / N, math.e)
-                cdf_val = cdf_gradino(arg)
+    # 4. Somma logaritmica ed esponenziale finale
+    log_basis = log_coeffs + log_pow_z + log_pow_1_z
+    basis = np.exp(log_basis)
 
-            somma += cdf_val * weight
+    # --- FINE MODIFICA ---
 
-        BE_N_cdf.append(somma)
+    return basis
 
-    return BE_N_cdf
+
+def calculate_bernstein_cdf(ecdf, N, a, b, asse_x):
+    """
+    Calcola la CDF di Bernstein in modo vettorializzato.
+    """
+    # 1. Normalizzazione x -> z in [0, 1]
+    asse_x = np.asarray(asse_x)
+    z = np.clip((asse_x - a) / (b - a), 0.0, 1.0)
+
+    # 2. Calcolo dei pesi w_n = F(a + (b-a) * n/N)
+    # n va da 0 a N
+    n_range = np.arange(N + 1)
+    eval_points = a + (b - a) * (n_range / N)
+    weights = ecdf(eval_points)  # shape (N+1,)
+
+    # 3. Calcolo Base e Prodotto Scalare
+    # Basis shape: (len(x), N+1)
+    basis = get_bernstein_basis(z, N)
+
+    # Prodotto matriciale: (M, N+1) @ (N+1,) -> (M,)
+    return basis @ weights
+
+
+def calculate_bernstein_pdf(ecdf, N, a, b, asse_x):
+    """
+    Calcola la PDF come derivata analitica della CDF di Bernstein.
+    Formula: PDF_N(x) = (N / (b-a)) * SOMMA_{0}^{N-1} [ (F((k+1)/N) - F(k/N)) * b_{N-1, k}(z) ]
+    """
+    # 1. Normalizzazione
+    asse_x = np.asarray(asse_x)
+    z = np.clip((asse_x - a) / (b - a), 0.0, 1.0)
+
+    # 2. Calcolo differenze dei pesi (coefficienti della derivata)
+    # Valutiamo la CDF in 0/N, ..., N/N
+    k_range = np.arange(N + 1)
+    eval_points = a + (b - a) * (k_range / N)
+    F_vals = ecdf(eval_points)
+
+    # diffs[k] = F((k+1)/N) - F(k/N). Shape: (N,)
+    diffs = np.diff(F_vals)
+
+    # 3. Calcolo Base di grado N-1
+    # Nota: la derivata di un polinomio di Bernstein di grado N è espressa
+    # usando basi di grado N-1
+    basis_deriv = get_bernstein_basis(z, N - 1)
+
+    # 4. Somma pesata e fattore di scala (regola della catena dz/dx)
+    # Scale factor: N * dz/dx = N * (1/(b-a))
+    scale_factor = N / (b - a)
+
+    return (basis_deriv @ diffs) * scale_factor
+
+
+def calculate_bernstein_exponential_cdf(ecdf, N, asse_y):
+    """
+    Versione vettorializzata per la trasformata esponenziale.
+    """
+    asse_y = np.asarray(asse_y)
+    x = np.exp(-asse_y)  # x gioca il ruolo di z qui
+
+    # Pesi
+    n_range = np.arange(N + 1)
+
+    # Gestione log(0): n=0 -> cdf_val=1.0, else cdf(-log(n/N))
+    # Creiamo array pesi inizializzato a 0
+    weights = np.zeros(N + 1)
+
+    # n=0
+    weights[0] = 1.0
+
+    # n > 0
+    if N > 0:
+        n_vals = n_range[1:]
+        args = -np.log(n_vals / N)
+        weights[1:] = ecdf(args)
+
+    # Calcolo base (su x)
+    basis = get_bernstein_basis(x, N)
+
+    return basis @ weights

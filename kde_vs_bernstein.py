@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.stats import entropy
 from scipy.stats import gaussian_kde
-from bernstein2 import create_ecdf, calculate_bernstein_pdf
+from bernstein import create_ecdf, calculate_bernstein_pdf
 from KumaraswamyDist import KumaraswamyDist
 
 # =============================================================================
