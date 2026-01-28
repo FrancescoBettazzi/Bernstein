@@ -15,7 +15,7 @@ from KumaraswamyDist import KumaraswamyDist
 
 scelta_dist = 'k'  # 'n', 'u', 'e', 'k'
 M = 100  # Number of samples
-NUM_SIMULATIONS = 20
+NUM_SIMULATIONS = 10
 num_points = 500  # Graph resolution
 
 # --- HEURISTIC N CALCULATION ---
@@ -44,8 +44,23 @@ elif scelta_dist == 'e':
     nome_dist = f"Exponential(lambda={lambda_param})"
 # KUMARASWAMY
 elif scelta_dist == 'k':
+    '''
+    campana
     k_a = 2
     k_b = 5
+    
+    decrescente
+    k_a = 1
+    k_b = 3
+    
+    forma a U
+    k_a = 0.5
+    k_b = 0.5
+    '''
+
+    k_a = 1
+    k_b = 3
+
     distribuzione = KumaraswamyDist(a=k_a, b=k_b)
     nome_dist = f"Kumaraswamy(a={k_a}, b={k_b})"
 
@@ -183,8 +198,7 @@ for i in range(NUM_SIMULATIONS):
         cdf_temp = calculate_bernstein_cdf(ecdf, int(n_val), a, b, curr_asse_x)
         pdf_temp = calculate_bernstein_pdf(ecdf, int(n_val), a, b, curr_asse_x)
         pdf_temp_samples = calculate_bernstein_pdf(ecdf, int(n_val), a, b, campioni)
-
-        errors_wd_matrix[i, idx_n] = trapezoid(np.abs(cdf_true_loc - cdf_temp), curr_asse_x)
+        errors_wd_matrix[i, idx_n] = trapezoid(np.abs(ecdf_vals_grid - cdf_temp), curr_asse_x)
         errors_kl_matrix[i, idx_n] = entropy(pk=pdf_true_loc, qk=pdf_temp + 1e-12)
         # CHANGED: Calculate Mean NLL for matrix
         errors_nll_matrix[i, idx_n] = -np.mean(np.log(pdf_temp_samples + 1e-12))
@@ -364,7 +378,7 @@ plt.tight_layout(rect=[0, 0.03, 1, 0.97])
 # =============================================================================
 
 fig3, ax3 = plt.subplots(1, 3, figsize=(18, 5)) # Changed to 1,3 to include NLL plot
-fig3.suptitle(f"Metric Sensitivity vs Degree N (Avg over {NUM_SIMULATIONS} runs)", fontsize=14)
+fig3.suptitle(f"Metric Sensitivity vs Degree N (Avg over {NUM_SIMULATIONS} runs) - {nome_dist}", fontsize=14)
 
 # Wasserstein
 ax3[0].plot(range_N, avg_curve_wd, 'b-o', label='Mean WD')

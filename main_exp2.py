@@ -14,9 +14,9 @@ from bernstein_exp import create_ecdf, calculate_bernstein_exp_cdf, calculate_be
 
 # Scegli la distribuzione in base alle immagini fornite:
 # 'erlang', 'weibull', 'lognormal'
-scelta_dist = 'erlang'
+scelta_dist = 'weibull'
 
-M = 200  # Numero di campioni
+M = 100  # Numero di campioni
 NUM_SIMULATIONS = 10  # Numero di simulazioni Monte Carlo
 num_points = 500  # Risoluzione grafici
 
@@ -41,7 +41,13 @@ if scelta_dist == 'erlang':
 
 elif scelta_dist == 'weibull':
     # Immagine Weibull: (1, 1.5) o (1, 0.5). Assumiamo (Scale=1, Shape=k)
-    w_shape = 1.5  # k
+    '''
+    w_shape = 1.5
+    
+    w_shape = 0.5
+    '''
+
+    w_shape = 0.5  # k
     w_scale = 1.0  # lambda
     # Scipy weibull_min: c=shape, scale=scale
     distribuzione = stats.weibull_min(c=w_shape, scale=w_scale)
@@ -50,11 +56,19 @@ elif scelta_dist == 'weibull':
 elif scelta_dist == 'lognormal':
     # Immagine Lognormal: (1, 1.8). Assumiamo (Scale=1, Shape=sigma)
     # Parametri (Scale, s). Scale = exp(mu). Se Scale=1 => mu=0.
+    '''
+    ln_shape = 1.8
+    ln_shape = 0.8
+    ln_shape = 0.2
+    '''
     ln_shape = 1.8  # sigma (s)
     ln_scale = 1.0  # exp(mu)
     distribuzione = stats.lognorm(s=ln_shape, scale=ln_scale)
     nome_dist = f"Lognormal(s={ln_shape}, scale={ln_scale})"
 
+visual_xlim = distribuzione.ppf(0.999) * 1.5
+# visual_xlim = 10
+# print(f"Limite visuale asse X impostato a: {visual_xlim:.2f}")
 # =============================================================================
 # 2. DATA STRUCTURES
 # =============================================================================
@@ -106,7 +120,7 @@ for i in range(NUM_SIMULATIONS):
     # Per Bernstein Exp il dominio è [0, inf).
     # Usiamo un range ragionevole basato sui dati correnti e sulla verità
     max_curr = max(campioni[-1], true_max_x)
-    curr_asse_x = np.linspace(0, max_curr, num_points)
+    curr_asse_x = np.linspace(1e-9, max_curr, num_points)
     sim_data['x_grids'].append(curr_asse_x)
 
     # Aggiorniamo il max globale per i plot finali
@@ -120,6 +134,8 @@ for i in range(NUM_SIMULATIONS):
     # True Values su griglia locale
     cdf_true_loc = distribuzione.cdf(curr_asse_x)
     pdf_true_loc = distribuzione.pdf(curr_asse_x)
+    # Opzionale: limita i valori infiniti per la stabilità dei calcoli successivi
+    # pdf_true_loc = np.clip(pdf_true_loc, 0, 1e10)
     ecdf_vals_grid = ecdf(curr_asse_x)
 
     # -----------------------------------------------------------
@@ -222,19 +238,24 @@ best_n_kl = range_N[np.argmin(avg_curve_kl)]
 best_n_nll = range_N[np.argmin(avg_curve_nll)]
 
 # Asse X Generale per il plot Ground Truth
-asse_x_generale = np.linspace(0, global_max_x, num_points)
+asse_x_generale = np.linspace(1e-9, global_max_x, num_points)
 cdf_vera = distribuzione.cdf(asse_x_generale)
 pdf_vera = distribuzione.pdf(asse_x_generale)
 
 
 # Helper Functions per il Plotting
-def plot_spaghetti(ax, x_list, y_list, y_true, label_true, title, color_true='k'):
+def plot_spaghetti(ax, x_list, y_list, y_true, label_true, title, color_true='k', x_max=None):
+    ax.plot(asse_x_generale, y_true, color=color_true, linewidth=2, linestyle='-', label=label_true)
     for x, y in zip(x_list, y_list):
         ax.plot(x, y, 'k-', linewidth=0.5, alpha=0.3)
-    ax.plot(asse_x_generale, y_true, color=color_true, linewidth=2, linestyle='-', label=label_true)
     ax.set_title(title, fontsize=10, fontweight='bold')
     ax.grid(True, alpha=0.3)
     ax.legend(loc='best', fontsize='small')
+
+    # === AGGIUNTA ===
+    if x_max is not None:
+        ax.set_xlim(0, x_max)
+    # ================
 
 
 def add_gt_line(ax, med_ref, std_dev=None, label_prefix="GT"):
@@ -252,13 +273,14 @@ fig1, ax1 = plt.subplots(3, 2, sharey='row', figsize=(12, 18))
 fig1.suptitle(f"CDF Analysis: {nome_dist} (M={M})", fontsize=14)
 
 # Row 0: Spaghetti
-plot_spaghetti(ax1[0, 0], sim_data['x_grids'], sim_data['cdf_M'], cdf_vera, 'True CDF', f"CDF (N=M={M})")
-plot_spaghetti(ax1[0, 1], sim_data['x_grids'], sim_data['cdf_N_cdf'], cdf_vera, 'True CDF', f"CDF (N={int(N_cdf)})")
+# print("sim_data['cdf_M']", sim_data['cdf_M'])
+plot_spaghetti(ax1[0, 0], sim_data['x_grids'], sim_data['cdf_M'], cdf_vera, 'True CDF', f"CDF (N=M={M})", x_max=visual_xlim)
+plot_spaghetti(ax1[0, 1], sim_data['x_grids'], sim_data['cdf_N_cdf'], cdf_vera, 'True CDF', f"CDF (N={int(N_cdf)})", x_max=visual_xlim)
 
 # Row 1: Derivative PDF
-plot_spaghetti(ax1[1, 0], sim_data['x_grids'], sim_data['pdf_M'], pdf_vera, 'True PDF', f"Derivative PDF (N=M={M})")
+plot_spaghetti(ax1[1, 0], sim_data['x_grids'], sim_data['pdf_M'], pdf_vera, 'True PDF', f"Derivative PDF (N=M={M})", x_max=visual_xlim)
 plot_spaghetti(ax1[1, 1], sim_data['x_grids'], sim_data['pdf_conn_to_cdf'], pdf_vera, 'True PDF',
-               f"Derivative PDF (N={int(N_cdf)})")
+               f"Derivative PDF (N={int(N_cdf)})", x_max=visual_xlim)
 
 # Row 2: Boxplots WD
 ax1[2, 0].boxplot(scalar_metrics['wd_emp_M'], medianprops=dict(color='k', linewidth=1.5))
@@ -297,9 +319,9 @@ fig2.suptitle(f"PDF Analysis: {nome_dist} (M={M})", fontsize=14)
 
 # Row 0: Spaghetti
 plot_spaghetti(ax2[0, 0], sim_data['x_grids'], sim_data['pdf_M'], pdf_vera,
-               'True PDF', f"PDF Estimator (N=M={M})")
+               'True PDF', f"PDF Estimator (N=M={M})", x_max=visual_xlim)
 plot_spaghetti(ax2[0, 1], sim_data['x_grids'], sim_data['pdf_N_pdf'], pdf_vera,
-               'True PDF', f"PDF Estimator (N={int(N_pdf)})")
+               'True PDF', f"PDF Estimator (N={int(N_pdf)})", x_max=visual_xlim)
 
 # Row 1: NLL
 ax2[1, 0].boxplot(scalar_metrics['nll_M'], medianprops=dict(color='k', linewidth=1.5))
@@ -353,7 +375,7 @@ plt.tight_layout(rect=[0, 0.03, 1, 0.97])
 # =============================================================================
 
 fig3, ax3 = plt.subplots(1, 3, figsize=(18, 5))
-fig3.suptitle(f"Metric Sensitivity vs Degree N (Avg over {NUM_SIMULATIONS} runs)", fontsize=14)
+fig3.suptitle(f"Metric Sensitivity vs Degree N (Avg over {NUM_SIMULATIONS} runs) - {nome_dist}", fontsize=14)
 
 # Wasserstein
 ax3[0].plot(range_N, avg_curve_wd, 'b-o', label='Mean WD')
