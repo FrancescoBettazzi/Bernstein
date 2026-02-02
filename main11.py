@@ -1,3 +1,5 @@
+import os
+from datetime import datetime
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,7 +15,7 @@ from KumaraswamyDist import KumaraswamyDist
 # 1. CONFIGURATION AND PARAMETERS
 # =============================================================================
 
-scelta_dist = 'k'  # 'n', 'u', 'e', 'k'
+scelta_dist = 'k'  # 'n', 'u', 'k'
 M = 100  # Number of samples
 NUM_SIMULATIONS = 10
 num_points = 500  # Graph resolution
@@ -25,6 +27,7 @@ N_cdf = math.ceil(M / math.log(M, 2)) ** 2
 # Initialize Distribution
 distribuzione = None
 nome_dist = ""
+dist_string = ""
 
 # GAUSSIAN
 if scelta_dist == 'n':
@@ -32,16 +35,14 @@ if scelta_dist == 'n':
     sigma = 1
     distribuzione = stats.norm(loc=mu, scale=sigma)
     nome_dist = f"Normal(mu={mu}, sigma={sigma})"
+    dist_string = f"gaussian_mu{mu}_sigma{sigma}"
 # UNIFORM
 elif scelta_dist == 'u':
     uni_a = 5
     uni_b = 15
     distribuzione = stats.uniform(loc=uni_a, scale=(uni_b - uni_a))
     nome_dist = f"Uniform[{uni_a}, {uni_b}]"
-elif scelta_dist == 'e':
-    lambda_param = 0.5
-    distribuzione = stats.expon(loc=0, scale=1 / lambda_param)
-    nome_dist = f"Exponential(lambda={lambda_param})"
+    dist_string = f"uniform_a{uni_a}_b{uni_b}"
 # KUMARASWAMY
 elif scelta_dist == 'k':
     '''
@@ -58,11 +59,14 @@ elif scelta_dist == 'k':
     k_b = 0.5
     '''
 
-    k_a = 1
-    k_b = 3
+    k_a = 2
+    k_b = 5
 
     distribuzione = KumaraswamyDist(a=k_a, b=k_b)
     nome_dist = f"Kumaraswamy(a={k_a}, b={k_b})"
+    dist_string = f"kumaraswamy_a{k_a}_b{k_b}"
+
+dist_string += f"_M{M}_runs{NUM_SIMULATIONS}"
 
 # =============================================================================
 # 2. DATA STRUCTURES
@@ -204,43 +208,35 @@ for i in range(NUM_SIMULATIONS):
         errors_nll_matrix[i, idx_n] = -np.mean(np.log(pdf_temp_samples + 1e-12))
 
 # =============================================================================
-# 4. POST-PROCESSING AND MEDIANS
+# 4. POST-PROCESSING AND STATS
 # =============================================================================
-def get_stats(metric_list):
-    return np.median(metric_list), np.std(metric_list)
+def get_full_stats(metric_list):
+    """Restituisce Media, Mediana, Std Dev"""
+    return np.mean(metric_list), np.median(metric_list), np.std(metric_list)
 
-# Calcolo statistiche finali
-mu_wd_true_M, std_wd_true_M = get_stats(scalar_metrics['wd_true_M'])
-mu_wd_emp_M, std_wd_emp_M = get_stats(scalar_metrics['wd_emp_M'])
-mu_wd_true_N, std_wd_true_N = get_stats(scalar_metrics['wd_true_N'])
-mu_wd_emp_N, std_wd_emp_N = get_stats(scalar_metrics['wd_emp_N'])
+# Calcolo statistiche complete (Mean, Median, Std)
+mean_wd_true_M, med_wd_true_M, std_wd_true_M = get_full_stats(scalar_metrics['wd_true_M'])
+mean_wd_emp_M,  med_wd_emp_M,  std_wd_emp_M  = get_full_stats(scalar_metrics['wd_emp_M'])
 
-mu_kl_M, std_kl_M = get_stats(scalar_metrics['kl_M'])
-mu_kl_N, std_kl_N = get_stats(scalar_metrics['kl_N'])
+mean_wd_true_N, med_wd_true_N, std_wd_true_N = get_full_stats(scalar_metrics['wd_true_N'])
+mean_wd_emp_N,  med_wd_emp_N,  std_wd_emp_N  = get_full_stats(scalar_metrics['wd_emp_N'])
 
-mu_nll_M, std_nll_M = get_stats(scalar_metrics['nll_M'])
-mu_nll_N, std_nll_N = get_stats(scalar_metrics['nll_N'])
+mean_kl_M, med_kl_M, std_kl_M = get_full_stats(scalar_metrics['kl_M'])
+mean_kl_N, med_kl_N, std_kl_N = get_full_stats(scalar_metrics['kl_N'])
 
-'''med_wd_true_M = np.median(scalar_metrics['wd_true_M'])
-med_wd_emp_M = np.median(scalar_metrics['wd_emp_M'])
-med_wd_true_N = np.median(scalar_metrics['wd_true_N'])
-med_wd_emp_N = np.median(scalar_metrics['wd_emp_N'])
+mean_nll_M, med_nll_M, std_nll_M = get_full_stats(scalar_metrics['nll_M'])
+mean_nll_N, med_nll_N, std_nll_N = get_full_stats(scalar_metrics['nll_N'])
 
-med_kl_M = np.median(scalar_metrics['kl_M'])
-med_nll_M = np.median(scalar_metrics['nll_M']) # CHANGED
-med_kl_N = np.median(scalar_metrics['kl_N'])
-med_nll_N = np.median(scalar_metrics['nll_N']) # CHANGED'''
-
-# Average Curves
+# Average Curves (invariato)
 avg_curve_wd = np.mean(errors_wd_matrix, axis=0)
 avg_curve_kl = np.mean(errors_kl_matrix, axis=0)
-avg_curve_nll = np.mean(errors_nll_matrix, axis=0)  # CHANGED
+avg_curve_nll = np.mean(errors_nll_matrix, axis=0)
 
 best_n_wd = range_N[np.argmin(avg_curve_wd)]
 best_n_kl = range_N[np.argmin(avg_curve_kl)]
-# CHANGED: argmin instead of argmax because we want to MINIMIZE NLL
 best_n_nll = range_N[np.argmin(avg_curve_nll)]
 
+# Setup GT lines (invariato)
 if scelta_dist == 'k':
     asse_x_generale = np.linspace(max(0.0001, global_min_x), min(0.9999, global_max_x), num_points)
 else:
@@ -258,154 +254,350 @@ def plot_spaghetti(ax, x_list, y_list, y_true, label_true, title, color_true='k'
     ax.grid(True, alpha=0.3)
     ax.legend(loc='best', fontsize='small')
 
-def add_gt_line(ax, med_ref, std_dev = None, label_prefix="GT"):
-    ax.axhline(med_ref, color='red', linestyle='--', linewidth=1.5, alpha=0.8)
-    ax.text(1.02, med_ref, f"{label_prefix}\nMedian: {med_ref:.4f}\nStd Dev: {std_dev:.4f}",
-            transform=ax.get_yaxis_transform(),
-            color='red', fontsize=8, va='center')
+# Funzione helper aggiornata per disegnare Media e Mediana
+def add_stat_lines(ax, mean_val, median_val, std_val, label, color='darkorange', text_x_offset=1.02):
+    text_x_offset = 1.02
+    # 1. Disegna le linee orizzontali
+    # Linea MEDIA (più marcata)
+    ax.axhline(mean_val, color=color, linestyle='--', linewidth=1.5, alpha=0.9)
+    # Linea MEDIANA (più leggera)
+    ax.axhline(median_val, color=color, linestyle='--', linewidth=1.5, alpha=0.6)
+
+    # 2. Ottieni i limiti per calcolare la scala relativa
+    y_min, y_max = ax.get_ylim()
+    y_range = y_max - y_min
+    if y_range == 0:
+        y_range = 1.0
+
+    # 3. Preparazione Contenuti e Stili
+    # Definiamo i dati per Mean e Median separatamente
+    # Mean: Bold
+    mean_text = rf"{label} Mean: {mean_val:.4f} $\pm$ {std_val:.4f}"
+    mean_style = 'bold'
+
+    # Median: Normal (non bold)
+    median_text = f"{label} Median: {median_val:.4f}"
+    median_style = 'normal'  # o 'regular'
+
+    # 4. Logica di Ordinamento (Chi sta sopra?)
+    # Se mean >= median, Mean sta sopra. Se median > mean, Median sta sopra.
+    if mean_val >= median_val:
+        top_data = (mean_val, mean_text, mean_style)
+        bot_data = (median_val, median_text, median_style)
+    else:
+        top_data = (median_val, median_text, median_style)
+        bot_data = (mean_val, mean_text, mean_style)
+
+    # Estraiamo i dati ordinati
+    val_top, txt_top, style_top = top_data
+    val_bot, txt_bot, style_bot = bot_data
+
+    # 5. Calcolo Sovrapposizione
+    dist = abs(mean_val - median_val)
+    overlap_threshold = 0.07 * y_range
+
+    if dist < overlap_threshold:
+        # === CASO SOVRAPPOSIZIONE ===
+        # Ancoriamo entrambi al punto medio
+        mid_point = (mean_val + median_val) / 2
+
+        # Testo Superiore: ancorato al mid_point, ma spinto verso l'alto (va='bottom')
+        ax.text(text_x_offset, mid_point, txt_top,
+                transform=ax.get_yaxis_transform(),
+                color=color, fontsize=8, va='bottom', fontweight=style_top)
+
+        # Testo Inferiore: ancorato al mid_point, ma spinto verso il basso (va='top')
+        ax.text(text_x_offset, mid_point, txt_bot,
+                transform=ax.get_yaxis_transform(),
+                color=color, fontsize=8, va='top', fontweight=style_bot)
+
+    else:
+        # === CASO NORMALE (Separati) ===
+        # Per evitare che i testi si scontrino nel mezzo se le linee sono vicine ma non troppo,
+        # applichiamo la logica: il valore più alto ha il testo SOPRA la sua linea,
+        # il valore più basso ha il testo SOTTO la sua linea.
+
+        # Testo per il valore più alto (va='bottom' -> sopra la linea)
+        ax.text(text_x_offset, val_top, txt_top,
+                transform=ax.get_yaxis_transform(),
+                color=color, fontsize=8, va='center', fontweight=style_top)
+
+        # Testo per il valore più basso (va='top' -> sotto la linea)
+        ax.text(text_x_offset, val_bot, txt_bot,
+                transform=ax.get_yaxis_transform(),
+                color=color, fontsize=8, va='center', fontweight=style_bot)
+
+
+# =============================================================================
+# CONFIGURATION & SETUP
+# =============================================================================
+
+# Parametri Booleani richiesti
+SAVE_VERTICAL = True  # Formato Originale (3x2)
+SAVE_HORIZONTAL = True  # Formato Nuovo (2x3)
+
+today_str = datetime.now().strftime("%Y%m%d")
+
+# Setup Cartelle
+dir_vert = f"img/{today_str}"
+dir_horz = f"img/{today_str}_h"
+
+if SAVE_VERTICAL:
+    os.makedirs(dir_vert, exist_ok=True)
+if SAVE_HORIZONTAL:
+    os.makedirs(dir_horz, exist_ok=True)
+
+
+# Funzione Helper per mappare gli assi
+# Restituisce un dizionario con chiavi logiche ('m_cdf', 'n_cdf', etc.)
+# mappate sugli assi fisici in base all'orientamento.
+def get_axes_mapping_fig1_2(ax_matrix, is_horizontal):
+    targets = {}
+    if not is_horizontal:
+        # VERTICAL (3 rows, 2 cols)
+        # 00 => 00 (M CDF)
+        # 01 => 01 (N CDF)  <- Nota: nel tuo mapping originale era diretto
+        # Manteniamo la struttura logica: Col 0 = M, Col 1 = N
+        targets['m_row1'] = ax_matrix[0, 0]
+        targets['n_row1'] = ax_matrix[0, 1]
+        targets['m_row2'] = ax_matrix[1, 0]
+        targets['n_row2'] = ax_matrix[1, 1]
+        targets['m_row3'] = ax_matrix[2, 0]
+        targets['n_row3'] = ax_matrix[2, 1]
+    else:
+        # HORIZONTAL (2 rows, 3 cols) - TRANSPOSED MAPPING
+        # Richiesta:
+        # 00 => 00 (M Row1) -> diventa Row0 Col0
+        # 01 => 10 (N Row1) -> diventa Row1 Col0
+        # 10 => 01 (M Row2) -> diventa Row0 Col1
+        # 11 => 11 (N Row2) -> diventa Row1 Col1
+        # 20 => 02 (M Row3) -> diventa Row0 Col2
+        # 21 => 12 (N Row3) -> diventa Row1 Col2
+
+        targets['m_row1'] = ax_matrix[0, 0]
+        targets['n_row1'] = ax_matrix[1, 0]  # Transposed
+        targets['m_row2'] = ax_matrix[0, 1]  # Transposed
+        targets['n_row2'] = ax_matrix[1, 1]
+        targets['m_row3'] = ax_matrix[0, 2]  # Transposed
+        targets['n_row3'] = ax_matrix[1, 2]
+    return targets
+
 
 # =============================================================================
 # 5. VISUALIZATION - FIGURE 1: FOCUS CDF
 # =============================================================================
 
-fig1, ax1 = plt.subplots(3, 2, sharey='row', figsize=(12, 18))
-fig1.suptitle(f"CDF Analysis: {nome_dist} (M={M})", fontsize=14)
+def draw_fig1_content(ax_map):
+    # CDF Plots (Row 1 logical)
+    plot_spaghetti(ax_map['m_row1'], sim_data['x_grids'], sim_data['cdf_M'], cdf_vera, 'True CDF', f"CDF (N=M={M})")
+    plot_spaghetti(ax_map['n_row1'], sim_data['x_grids'], sim_data['cdf_N_cdf'], cdf_vera, 'True CDF',
+                   f"CDF (N={int(N_cdf)})")
 
-# CDF Plots
-plot_spaghetti(ax1[0, 0], sim_data['x_grids'], sim_data['cdf_M'], cdf_vera, 'True CDF', f"CDF (N=M={M})")
-plot_spaghetti(ax1[0, 1], sim_data['x_grids'], sim_data['cdf_N_cdf'], cdf_vera, 'True CDF', f"CDF (N={int(N_cdf)})")
+    # PDF Derivative Plots (Row 2 logical)
+    plot_spaghetti(ax_map['m_row2'], sim_data['x_grids'], sim_data['pdf_M'], pdf_vera, 'True PDF',
+                   f"Derivative PDF (N=M={M})")
+    plot_spaghetti(ax_map['n_row2'], sim_data['x_grids'], sim_data['pdf_conn_to_cdf'], pdf_vera, 'True PDF',
+                   f"Derivative PDF (N={int(N_cdf)})")
 
-# PDF (Derivative of CDF) Plots
-plot_spaghetti(ax1[1, 0], sim_data['x_grids'], sim_data['pdf_M'], pdf_vera, 'True PDF', f"Derivative PDF (N=M={M})")
-plot_spaghetti(ax1[1, 1], sim_data['x_grids'], sim_data['pdf_conn_to_cdf'], pdf_vera, 'True PDF', f"Derivative PDF (N={int(N_cdf)})")
+    # Boxplot WD (Row 3 logical)
+    # M
+    ax_map['m_row3'].boxplot(scalar_metrics['wd_emp_M'], medianprops=dict(color='k', linewidth=1.5))
+    add_stat_lines(ax_map['m_row3'], mean_wd_emp_M, med_wd_emp_M, std_wd_emp_M, "Emp", color='darkorange',
+                   text_x_offset=1.02)
+    add_stat_lines(ax_map['m_row3'], mean_wd_true_M, med_wd_true_M, std_wd_true_M, "True", color='firebrick',
+                   text_x_offset=1.35)
+    ax_map['m_row3'].set_title(f"Est CDF vs ECDF (N=M={M})", fontsize=10, fontweight='bold')
+    ax_map['m_row3'].set_ylabel("Wasserstein distance")
+    ax_map['m_row3'].grid(True, alpha=0.3)
 
-# Boxplots Diff vs ECDF (Wasserstein Empirica visuale)
-# ax1[2, 0].boxplot(boxplot_data['cdf_M_diff_ecdf'], medianprops=dict(color='k', linewidth=1.5))
-ax1[2, 0].boxplot(scalar_metrics['wd_emp_M'], medianprops=dict(color='k', linewidth=1.5))
-add_gt_line(ax1[2, 0], mu_wd_true_M, std_wd_true_M,  label_prefix="Est CDF vs True")
-add_gt_line(ax1[2, 0], mu_wd_emp_M, std_wd_emp_M,  label_prefix="Est CDF vs ECDF")
-# ax1[2, 0].set_title(f"Diff vs ECDF (N=M)\nMed WD(True): {med_wd_true_M:.4f} | Med WD(Emp): {med_wd_emp_M:.4f}", fontsize=9)
-ax1[2, 0].set_title(f"Est CDF vs ECDF (N=M={M})", fontsize=10, fontweight='bold')  # \nAvg WD(True): {mu_wd_true_M:.4f} (std {std_wd_true_M:.4f})")
-ax1[2, 0].set_ylabel("Wasserstein distance")
-ax1[2, 0].grid(True, alpha=0.3)
+    # N
+    ax_map['n_row3'].boxplot(scalar_metrics['wd_emp_N'], medianprops=dict(color='k', linewidth=1.5))
+    add_stat_lines(ax_map['n_row3'], mean_wd_emp_N, med_wd_emp_N, std_wd_emp_N, "Emp", color='darkorange',
+                   text_x_offset=1.02)
+    add_stat_lines(ax_map['n_row3'], mean_wd_true_N, med_wd_true_N, std_wd_true_N, "True", color='firebrick',
+                   text_x_offset=1.35)
+    ax_map['n_row3'].set_title(f"Est CDF vs ECDF (N={int(N_cdf)})", fontsize=10, fontweight='bold')
+    ax_map['n_row3'].set_ylabel("Wasserstein distance")
+    ax_map['n_row3'].grid(True, alpha=0.3)
 
-# ax1[2, 1].boxplot(boxplot_data['cdf_N_diff_ecdf'], medianprops=dict(color='k', linewidth=1.5))
-ax1[2, 1].boxplot(scalar_metrics['wd_emp_N'], medianprops=dict(color='k', linewidth=1.5))
-add_gt_line(ax1[2, 1], mu_wd_true_N, std_wd_true_N,  label_prefix="Est CDF vs True")
-add_gt_line(ax1[2, 1], mu_wd_emp_N, std_wd_emp_N,  label_prefix="Est CDF vs ECDF")
-# ax1[2, 1].set_title(f"Diff vs ECDF (N={int(N_cdf)})\nMed WD(True): {med_wd_true_N:.4f} | Med WD(Emp): {med_wd_emp_N:.4f}", fontsize=9)
-ax1[2, 1].set_title(f"Est CDF vs ECDF (N={int(N_cdf)})", fontsize=10, fontweight='bold')  # \nAvg WD(True): {mu_wd_N:.4f} (std {std_wd_N:.4f})")
-ax1[2, 1].set_ylabel("Wasserstein distance")
-ax1[2, 1].grid(True, alpha=0.3)
+    # Tick params for all
+    for k, ax in ax_map.items():
+        ax.tick_params(labelleft=True)
 
-for ax in ax1.flat:
-    ax.tick_params(labelleft=True)
 
-plt.tight_layout(rect=[0, 0.03, 1, 0.97])
+# --- GENERAZIONE FIGURA 1 ---
+file_name_1 = f"{dist_string}_1cdf.png"
+
+# 1. Verticale
+if SAVE_VERTICAL:
+    fig1_v, ax1_v = plt.subplots(3, 2, sharey='row', figsize=(12, 18))
+    fig1_v.suptitle(f"CDF Analysis: {nome_dist} (M={M}) - {NUM_SIMULATIONS} runs", fontsize=14)
+    mapping_v = get_axes_mapping_fig1_2(ax1_v, is_horizontal=False)
+    draw_fig1_content(mapping_v)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.97])
+    fig1_v.savefig(os.path.join(dir_vert, file_name_1), dpi=300, bbox_inches='tight')
+    print(f"[VERT] Fig 1 Saved: {os.path.join(dir_vert, file_name_1)}")
+    plt.close(fig1_v)
+
+# 2. Orizzontale (Sharey='col' è cruciale qui perché le colonne contengono grandezze omogenee)
+if SAVE_HORIZONTAL:
+    fig1_h, ax1_h = plt.subplots(2, 3, sharey='col', figsize=(18, 12))
+    fig1_h.suptitle(f"CDF Analysis: {nome_dist} (M={M}) - {NUM_SIMULATIONS} runs", fontsize=14)
+    mapping_h = get_axes_mapping_fig1_2(ax1_h, is_horizontal=True)
+    draw_fig1_content(mapping_h)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.97])
+    fig1_h.savefig(os.path.join(dir_horz, file_name_1), dpi=300, bbox_inches='tight')
+    print(f"[HORZ] Fig 1 Saved: {os.path.join(dir_horz, file_name_1)}")
+    plt.close(fig1_h)
+
 
 # =============================================================================
-# 6. VISUALIZATION - FIGURE 2: FOCUS PDF (SMART ZOOM)
+# 6. VISUALIZATION - FIGURE 2: FOCUS PDF
 # =============================================================================
 
-fig2, ax2 = plt.subplots(3, 2, sharey='row', figsize=(12, 18))
-fig2.suptitle(f"PDF Analysis: {nome_dist} (M={M})", fontsize=14)
+def draw_fig2_content(ax_map):
+    # Spaghetti Plots (Row 1 logical)
+    plot_spaghetti(ax_map['m_row1'], sim_data['x_grids'], sim_data['pdf_M'], pdf_vera,
+                   'True PDF', f"PDF Estimator (N=M={M})")
+    plot_spaghetti(ax_map['n_row1'], sim_data['x_grids'], sim_data['pdf_N_pdf'], pdf_vera,
+                   'True PDF', f"PDF Estimator (N={int(N_pdf)})")
 
-# --- Row 1: Spaghetti Plots (Unchanged) ---
-plot_spaghetti(ax2[0, 0], sim_data['x_grids'], sim_data['pdf_M'], pdf_vera,
-               'True PDF', f"PDF Estimator (N=M={M})")
-plot_spaghetti(ax2[0, 1], sim_data['x_grids'], sim_data['pdf_N_pdf'], pdf_vera,
-               'True PDF', f"PDF Estimator (N={int(N_pdf)})")
+    # NLL Boxplots (Row 2 logical)
+    ax_map['m_row2'].boxplot(scalar_metrics['nll_M'], medianprops=dict(color='k', linewidth=1.5))
+    add_stat_lines(ax_map['m_row2'], mean_nll_M, med_nll_M, std_nll_M, "NLL", color='darkorange')
+    ax_map['m_row2'].set_title(f"Est PDF vs Samples (N=M={M})", fontsize=10, fontweight='bold')
+    ax_map['m_row2'].set_ylabel("Negative log-likelihood")
+    ax_map['m_row2'].grid(True, alpha=0.3)
 
-# --- Row 2: BOXPLOTS PDF (NLL Samples) ---
+    ax_map['n_row2'].boxplot(scalar_metrics['nll_N'], medianprops=dict(color='k', linewidth=1.5))
+    add_stat_lines(ax_map['n_row2'], mean_nll_N, med_nll_N, std_nll_N, "NLL", color='darkorange')
+    ax_map['n_row2'].set_title(f"Est PDF vs Samples (N={int(N_pdf)})", fontsize=10, fontweight='bold')
+    ax_map['n_row2'].set_ylabel("Negative log-likelihood")
+    ax_map['n_row2'].grid(True, alpha=0.3)
 
-# NLL Boxplots (Distance from Samples)
-# Filter extremes for better visualization if needed
-# all_nll = np.concatenate(boxplot_data['pdf_M_nll_samples'] + boxplot_data['pdf_N_nll_samples'])
-# y_max_nll = np.percentile(all_nll, 95) * 1.2
+    # KL Boxplots (Row 3 logical)
+    ax_map['m_row3'].boxplot(scalar_metrics['kl_M'], medianprops=dict(color='k', linewidth=1.5))
+    add_stat_lines(ax_map['m_row3'], mean_kl_M, med_kl_M, std_kl_M, "KL", color='darkorange')
+    ax_map['m_row3'].set_title(f"Est PDF vs True (N=M={M})", fontsize=10, fontweight='bold')
+    ax_map['m_row3'].set_ylabel("Kullback–Leibler divergence")
+    ax_map['m_row3'].grid(True, alpha=0.3)
 
-# 2,1: N=M
-'''ax2[1, 0].boxplot(boxplot_data['pdf_M_nll_samples'], patch_artist=True,
-                  # flierprops=dict(marker='o', markersize=3, alpha=0.5), # Make them subtle
-                  boxprops=dict(facecolor='salmon'),
-                  medianprops=dict(color='red'))'''
+    ax_map['n_row3'].boxplot(scalar_metrics['kl_N'], medianprops=dict(color='k', linewidth=1.5))
+    add_stat_lines(ax_map['n_row3'], mean_kl_N, med_kl_N, std_kl_N, "KL", color='darkorange')
+    ax_map['n_row3'].set_title(f"Est PDF vs True (N={N_pdf})", fontsize=10, fontweight='bold')
+    ax_map['n_row3'].set_ylabel("Kullback–Leibler divergence")
+    ax_map['n_row3'].grid(True, alpha=0.3)
 
-ax2[1, 0].boxplot(scalar_metrics['nll_M'], medianprops=dict(color='k', linewidth=1.5))
-add_gt_line(ax2[1, 0], mu_nll_M, std_nll_M,  label_prefix="Est PDF vs Samples")
-# title_pdf_M = (f"Neg Log-Likelihood (N=M)\n"
-#                f"Med KL: {med_kl_M:.4f} | Med NLL: {med_nll_M:.4f}")
-# ax2[1, 0].set_title(title_pdf_M, fontsize=9)
-ax2[1, 0].set_title(f"Est PDF vs Samples (N=M={M})", fontsize=10, fontweight='bold')  # \nMean KL: {mu_kl_M:.4f} | Mean NLL: {mu_nll_M:.4f}")
-ax2[1, 0].set_ylabel("Negative log-likelihood")
-# ax2[1, 0].set_xlabel("Simulation ID")
-# ax2[1, 0].set_ylim(top=y_max_nll)
-ax2[1, 0].grid(True, alpha=0.3)
+    for k, ax in ax_map.items():
+        ax.tick_params(labelleft=True)
 
-# 2,2: N=N_pdf
-'''ax2[1, 1].boxplot(boxplot_data['pdf_N_nll_samples'], patch_artist=True,
-                  boxprops=dict(facecolor='orange'),
-                  medianprops=dict(color='darkorange'))'''
-ax2[1, 1].boxplot(scalar_metrics['nll_N'], medianprops=dict(color='k', linewidth=1.5))
-add_gt_line(ax2[1, 1], mu_nll_N, std_nll_N,  label_prefix="Est PDF vs Samples")
-# title_pdf_N = (f"Neg Log-Likelihood (N={int(N_pdf)})\n"
-#                f"Med KL: {med_kl_N:.4f} | Med NLL: {med_nll_N:.4f}")
-# ax2[1, 1].set_title(title_pdf_N, fontsize=9)
-ax2[1, 1].set_title(f"Est PDF vs Samples (N={int(N_pdf)})", fontsize=10, fontweight='bold')  # \nMean KL: {mu_kl_N:.4f} | Mean NLL: {mu_nll_N:.4f}")
-ax2[1, 1].set_ylabel("Negative log-likelihood")
-# ax2[1, 1].set_xlabel("Simulation ID")
-# ax2[1, 1].set_ylim(top=y_max_nll)
-ax2[1, 1].grid(True, alpha=0.3)
 
-# TODO: NUOVO
-ax2[2, 0].boxplot(scalar_metrics['kl_M'], medianprops=dict(color='k', linewidth=1.5))
-add_gt_line(ax2[2, 0], mu_kl_M, std_kl_M,  label_prefix="Est PDF vs True")
-ax2[2, 0].set_title(f"Est PDF vs True (N=M={M})", fontsize=10, fontweight='bold')  # \nMean KL: {mu_kl_M:.4f} | Mean NLL: {mu_nll_M:.4f}")
-ax2[2, 0].set_ylabel("Kullback–Leibler divergence")
-ax2[2, 0].grid(True, alpha=0.3)
+# --- GENERAZIONE FIGURA 2 ---
+file_name_2 = f"{dist_string}_2pdf.png"
 
-ax2[2, 1].boxplot(scalar_metrics['kl_N'], medianprops=dict(color='k', linewidth=1.5))
-add_gt_line(ax2[2, 1], mu_kl_N, std_kl_N,  label_prefix="Est PDF vs True")
-ax2[2, 1].set_title(f"Est PDF vs True (N={N_pdf})", fontsize=10, fontweight='bold')  # \nMean KL: {mu_kl_M:.4f} | Mean NLL: {mu_nll_M:.4f}")
-ax2[2, 1].set_ylabel("Kullback–Leibler divergence")
-ax2[2, 1].grid(True, alpha=0.3)
+# 1. Verticale
+if SAVE_VERTICAL:
+    fig2_v, ax2_v = plt.subplots(3, 2, sharey='row', figsize=(12, 18))
+    fig2_v.suptitle(f"PDF Analysis: {nome_dist} (M={M}) - {NUM_SIMULATIONS} runs", fontsize=14)
+    mapping_v = get_axes_mapping_fig1_2(ax2_v, is_horizontal=False)
+    draw_fig2_content(mapping_v)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.97])
+    fig2_v.savefig(os.path.join(dir_vert, file_name_2), dpi=300, bbox_inches='tight')
+    print(f"[VERT] Fig 2 Saved: {os.path.join(dir_vert, file_name_2)}")
+    plt.close(fig2_v)
 
-for ax in ax2.flat:
-    ax.tick_params(labelleft=True)
+# 2. Orizzontale
+if SAVE_HORIZONTAL:
+    fig2_h, ax2_h = plt.subplots(2, 3, sharey='col', figsize=(18, 12))
+    fig2_h.suptitle(f"PDF Analysis: {nome_dist} (M={M}) - {NUM_SIMULATIONS} runs", fontsize=14)
+    mapping_h = get_axes_mapping_fig1_2(ax2_h, is_horizontal=True)
+    draw_fig2_content(mapping_h)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.97])
+    fig2_h.savefig(os.path.join(dir_horz, file_name_2), dpi=300, bbox_inches='tight')
+    print(f"[HORZ] Fig 2 Saved: {os.path.join(dir_horz, file_name_2)}")
+    plt.close(fig2_h)
 
-plt.tight_layout(rect=[0, 0.03, 1, 0.97])
 
 # =============================================================================
 # 7. VISUALIZATION - FIGURE 3: BIAS-VARIANCE
 # =============================================================================
 
-fig3, ax3 = plt.subplots(1, 3, figsize=(18, 5)) # Changed to 1,3 to include NLL plot
-fig3.suptitle(f"Metric Sensitivity vs Degree N (Avg over {NUM_SIMULATIONS} runs) - {nome_dist}", fontsize=14)
+# Helper per mappare Fig 3 (1x3 vs 3x1)
+def get_axes_mapping_fig3(ax_array, is_horizontal_mode):
+    # Logical Names: 'wd', 'kl', 'nll'
+    # Originale (Vertical Mode set): 1 Row x 3 Cols (Wide strip)
+    # Nuovo (Horizontal Mode set): Trasposto -> 3 Rows x 1 Col (Vertical strip)
+    # Nota: L'utente ha chiesto di trasporre le logiche.
+    # Se il set principale è Verticale (3x2), Fig3 è (1x3).
+    # Se il set principale è Orizzontale (2x3), Fig3 diventa (3x1).
 
-# Wasserstein
-ax3[0].plot(range_N, avg_curve_wd, 'b-o', label='Mean WD')
-ax3[0].axvline(best_n_wd, color='r', linestyle='--', label=f'Best N={best_n_wd}')
-ax3[0].axvline(N_cdf, color='orange', linestyle=':', linewidth=2, label=f'Heur N={int(N_cdf)}')
-ax3[0].set_title("CDF Distance (Wasserstein)")
-ax3[0].set_xlabel("Degree N")
-ax3[0].grid(True, alpha=0.3)
-ax3[0].legend()
+    t = {}
+    if not is_horizontal_mode:
+        # Array shape (3,) flat or (1,3)
+        # Assumiamo flatten access
+        ax_flat = ax_array.flatten()
+        t['wd'] = ax_flat[0]
+        t['kl'] = ax_flat[1]
+        t['nll'] = ax_flat[2]
+    else:
+        # Anche qui flatten, ma l'aspetto della figura è verticale
+        ax_flat = ax_array.flatten()
+        t['wd'] = ax_flat[0]
+        t['kl'] = ax_flat[1]
+        t['nll'] = ax_flat[2]
+    return t
 
-# KL Divergence
-ax3[1].plot(range_N, avg_curve_kl, 'g-o', label='Mean KL')
-ax3[1].axvline(best_n_kl, color='r', linestyle='--', label=f'Best N={best_n_kl}')
-ax3[1].axvline(N_pdf, color='orange', linestyle=':', linewidth=2, label=f'Heur N={int(N_pdf)}')
-ax3[1].set_title("PDF Distance (KL Divergence)")
-ax3[1].set_xlabel("Degree N")
-ax3[1].grid(True, alpha=0.3)
-ax3[1].legend()
 
-# CHANGED: Average NLL Plot (Minimization)
-ax3[2].plot(range_N, avg_curve_nll, 'm-o', label='Mean NLL')
-ax3[2].axvline(best_n_nll, color='r', linestyle='--', label=f'Best N={best_n_nll}')
-ax3[2].axvline(N_pdf, color='orange', linestyle=':', linewidth=2, label=f'Heur N={int(N_pdf)}')
-ax3[2].set_title("Sample Fit (Neg Log Likelihood)")
-ax3[2].set_xlabel("Degree N")
-ax3[2].grid(True, alpha=0.3)
-ax3[2].legend()
+def draw_fig3_content(ax_map):
+    # Wasserstein
+    ax_map['wd'].plot(range_N, avg_curve_wd, 'b-o', label='Mean WD')
+    ax_map['wd'].axvline(best_n_wd, color='r', linestyle='--', label=f'Best N={best_n_wd}')
+    ax_map['wd'].axvline(N_cdf, color='orange', linestyle=':', linewidth=2, label=f'Heur N={int(N_cdf)}')
+    ax_map['wd'].set_title("CDF Distance (Wasserstein)")
+    ax_map['wd'].set_xlabel("Degree N")
+    ax_map['wd'].grid(True, alpha=0.3)
+    ax_map['wd'].legend()
 
-plt.tight_layout()
-plt.show()
+    # KL Divergence
+    ax_map['kl'].plot(range_N, avg_curve_kl, 'g-o', label='Mean KL')
+    ax_map['kl'].axvline(best_n_kl, color='r', linestyle='--', label=f'Best N={best_n_kl}')
+    ax_map['kl'].axvline(N_pdf, color='orange', linestyle=':', linewidth=2, label=f'Heur N={int(N_pdf)}')
+    ax_map['kl'].set_title("PDF Distance (KL Divergence)")
+    ax_map['kl'].set_xlabel("Degree N")
+    ax_map['kl'].grid(True, alpha=0.3)
+    ax_map['kl'].legend()
+
+    # NLL
+    ax_map['nll'].plot(range_N, avg_curve_nll, 'm-o', label='Mean NLL')
+    ax_map['nll'].axvline(best_n_nll, color='r', linestyle='--', label=f'Best N={best_n_nll}')
+    ax_map['nll'].axvline(N_pdf, color='orange', linestyle=':', linewidth=2, label=f'Heur N={int(N_pdf)}')
+    ax_map['nll'].set_title("Sample Fit (Neg Log Likelihood)")
+    ax_map['nll'].set_xlabel("Degree N")
+    ax_map['nll'].grid(True, alpha=0.3)
+    ax_map['nll'].legend()
+
+
+# --- GENERAZIONE FIGURA 3 ---
+file_name_3 = f"{dist_string}_3bias_tradeoff.png"
+
+# 1. Verticale (Standard: 1 riga, 3 colonne)
+'''if SAVE_VERTICAL:
+    fig3_v, ax3_v = plt.subplots(1, 3, figsize=(18, 5))
+    fig3_v.suptitle(f"Metric Sensitivity vs Degree N (Avg over {NUM_SIMULATIONS} runs) - {nome_dist}", fontsize=14)
+    map_v = get_axes_mapping_fig3(ax3_v, is_horizontal_mode=False)
+    draw_fig3_content(map_v)
+    plt.tight_layout()
+    fig3_v.savefig(os.path.join(dir_vert, file_name_3), dpi=300, bbox_inches='tight')
+    print(f"[VERT] Fig 3 Saved: {os.path.join(dir_vert, file_name_3)}")
+    plt.close(fig3_v)'''
+
+# 2. Orizzontale (Trasposto: 3 righe, 1 colonna)
+if SAVE_HORIZONTAL or SAVE_VERTICAL:
+    fig3_h, ax3_h = plt.subplots(3, 1, figsize=(6, 18))  # Layout verticale per la cartella orizzontale
+    fig3_h.suptitle(f"Metric Sensitivity - {nome_dist}", fontsize=14)
+    map_h = get_axes_mapping_fig3(ax3_h, is_horizontal_mode=True)
+    draw_fig3_content(map_h)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.97])
+    fig3_h.savefig(os.path.join(dir_horz, file_name_3), dpi=300, bbox_inches='tight')
+    print(f"Fig 3 Saved: {os.path.join(dir_horz, file_name_3)}")
+    plt.close(fig3_h)
