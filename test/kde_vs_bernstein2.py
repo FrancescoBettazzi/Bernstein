@@ -328,7 +328,7 @@ for DIST_KEY in DIST_KEYS:
 
     plt.tight_layout()
 
-    output_dir = "img"
+    output_dir = "../img"
     os.makedirs(output_dir, exist_ok=True)
     today_str = datetime.now().strftime("%Y%m%d")
     file_name = f"{today_str}_kde_vs_bernstein_M{M}_SIMUL{NUM_SIMULATIONS}_{dist_string}.png"
