@@ -45,32 +45,32 @@ for DIST_KEY in DIST_KEYS:
         dist_obj = stats.uniform(loc=5, scale=10)
         dist_name = "Uniforme [5, 15]"
         support_type = "bounded"
-        dist_string = "uniform"
+        dist_string = f"uniform_a5_b15"
 
     elif DIST_KEY == 'n':
         # Gaussiana mu=0 sigma=1
         dist_obj = stats.norm(loc=0, scale=1)
         dist_name = "Normale (mu=0, sigma=1)"
         support_type = "unbounded"  # Tratteremo come bounded sui min/max campionari per Bernstein STD
-        dist_string = "gaussian"
+        dist_string = "gaussian_mu0_sigma1"
 
     elif DIST_KEY == 'k':
         dist_obj = KumaraswamyDist(a=2, b=5)
         dist_name = "Kumaraswamy (a=2, b=5)"
         support_type = "bounded"
-        dist_string = "kumaraswamy_2_5"
+        dist_string = "kumaraswamy_a2_b5"
 
     elif DIST_KEY == 'k_d':
         dist_obj = KumaraswamyDist(a=1, b=3)
         dist_name = "Kumaraswamy (a=1, b=3)"
         support_type = "bounded"
-        dist_string = "kumaraswamy_1_3"
+        dist_string = "kumaraswamy_a1_b3"
 
     elif DIST_KEY == 'k_u':
         dist_obj = KumaraswamyDist(a=0.5, b=0.5)
         dist_name = "Kumaraswamy (a=0.5, b=0.5)"
         support_type = "bounded"
-        dist_string = "kumaraswamy_05_05"
+        dist_string = "kumaraswamy_a0.5_b0.5"
 
     # --- DISTRIBUZIONI CHE USANO BERNSTEIN EXP ---
     elif DIST_KEY == 'erlang':
@@ -80,7 +80,7 @@ for DIST_KEY in DIST_KEYS:
         dist_name = "Erlang (n=5, mu=1)"
         use_exp_bernstein = True
         support_type = "semi-infinite"
-        dist_string = "erlang"
+        dist_string = "erlang_n5_mu1"
 
     elif DIST_KEY == 'weibull_1_5':
         # Shape (c) = 1.5, Scale = 1
@@ -88,14 +88,14 @@ for DIST_KEY in DIST_KEYS:
         dist_name = "Weibull (shape=1.5, scale=1)"
         use_exp_bernstein = True
         support_type = "semi-infinite"
-        dist_string = "weibull_1_15"
+        dist_string = "weibull_scale1.0_shape1.5"
 
     elif DIST_KEY == 'weibull_0_5':
         dist_obj = stats.weibull_min(c=0.5, scale=1)
         dist_name = "Weibull (shape=0.5, scale=1)"
         use_exp_bernstein = True
         support_type = "semi-infinite"
-        dist_string = "weibull_1_05"
+        dist_string = "weibull_scale1.0_shape0.5"
 
     elif DIST_KEY == 'lognormal_1_8':
         # s = shape parameter (sigma), scale = exp(mu). Se scale=1 -> mu=0
@@ -103,21 +103,21 @@ for DIST_KEY in DIST_KEYS:
         dist_name = "Lognormal (s=1.8, scale=1)"
         use_exp_bernstein = True
         support_type = "semi-infinite"
-        dist_string = "lognormal_1_18"
+        dist_string = "lognormal_scale1.0_shape1.8"
 
     elif DIST_KEY == 'lognormal_0_8':
         dist_obj = stats.lognorm(s=0.8, scale=1)
         dist_name = "Lognormal (s=0.8, scale=1)"
         use_exp_bernstein = True
         support_type = "semi-infinite"
-        dist_string = "lognormal_1_08"
+        dist_string = "lognormal_scale1.0_shape0.8"
 
     elif DIST_KEY == 'lognormal_0_2':
         dist_obj = stats.lognorm(s=0.2, scale=1)
         dist_name = "Lognormal (s=0.2, scale=1)"
         use_exp_bernstein = True
         support_type = "semi-infinite"
-        dist_string = "lognormal_1_02"
+        dist_string = "lognormal_scale1.0_shape0.2"
 
     else:
         raise ValueError(f"Distribuzione '{DIST_KEY}' non riconosciuta.")
@@ -377,9 +377,9 @@ for DIST_KEY in DIST_KEYS:
     today_str = datetime.now().strftime("%Y%m%d")
     output_dir = f"img/{today_str}"
     os.makedirs(output_dir, exist_ok=True)
-    file_name = f"kde_vs_bernstein_M{M}_SIMUL{NUM_SIMULATIONS}_{dist_string}.png"
+    file_name = f"kde_vs_bernstein_M{M}_SIMUL{NUM_SIMULATIONS}_{dist_string}.jpg"
     full_path = os.path.join(output_dir, file_name)
-    fig.savefig(full_path, dpi=300, bbox_inches='tight')
+    fig.savefig(full_path, dpi=150, bbox_inches='tight', facecolor='white')
 
-    plt.show()
+    # plt.show()
     plt.close(fig)

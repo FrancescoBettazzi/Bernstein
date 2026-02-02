@@ -59,8 +59,8 @@ elif scelta_dist == 'k':
     k_b = 0.5
     '''
 
-    k_a = 2
-    k_b = 5
+    k_a = 1
+    k_b = 3
 
     distribuzione = KumaraswamyDist(a=k_a, b=k_b)
     nome_dist = f"Kumaraswamy(a={k_a}, b={k_b})"
@@ -304,12 +304,12 @@ def add_stat_lines(ax, mean_val, median_val, std_val, label, color='darkorange',
         # Testo Superiore: ancorato al mid_point, ma spinto verso l'alto (va='bottom')
         ax.text(text_x_offset, mid_point, txt_top,
                 transform=ax.get_yaxis_transform(),
-                color=color, fontsize=8, va='bottom', fontweight=style_top)
+                color=color, fontsize=9, va='bottom', fontweight=style_top)
 
         # Testo Inferiore: ancorato al mid_point, ma spinto verso il basso (va='top')
         ax.text(text_x_offset, mid_point, txt_bot,
                 transform=ax.get_yaxis_transform(),
-                color=color, fontsize=8, va='top', fontweight=style_bot)
+                color=color, fontsize=9, va='top', fontweight=style_bot)
 
     else:
         # === CASO NORMALE (Separati) ===
@@ -320,12 +320,12 @@ def add_stat_lines(ax, mean_val, median_val, std_val, label, color='darkorange',
         # Testo per il valore più alto (va='bottom' -> sopra la linea)
         ax.text(text_x_offset, val_top, txt_top,
                 transform=ax.get_yaxis_transform(),
-                color=color, fontsize=8, va='center', fontweight=style_top)
+                color=color, fontsize=9, va='center', fontweight=style_top)
 
         # Testo per il valore più basso (va='top' -> sotto la linea)
         ax.text(text_x_offset, val_bot, txt_bot,
                 transform=ax.get_yaxis_transform(),
-                color=color, fontsize=8, va='center', fontweight=style_bot)
+                color=color, fontsize=9, va='center', fontweight=style_bot)
 
 
 # =============================================================================
@@ -426,7 +426,7 @@ def draw_fig1_content(ax_map):
 
 
 # --- GENERAZIONE FIGURA 1 ---
-file_name_1 = f"{dist_string}_1cdf.png"
+file_name_1 = f"{dist_string}_1cdf.jpg"
 
 # 1. Verticale
 if SAVE_VERTICAL:
@@ -435,7 +435,7 @@ if SAVE_VERTICAL:
     mapping_v = get_axes_mapping_fig1_2(ax1_v, is_horizontal=False)
     draw_fig1_content(mapping_v)
     plt.tight_layout(rect=[0, 0.03, 1, 0.97])
-    fig1_v.savefig(os.path.join(dir_vert, file_name_1), dpi=300, bbox_inches='tight')
+    fig1_v.savefig(os.path.join(dir_vert, file_name_1), dpi=150, bbox_inches='tight', facecolor='white')
     print(f"[VERT] Fig 1 Saved: {os.path.join(dir_vert, file_name_1)}")
     plt.close(fig1_v)
 
@@ -446,7 +446,7 @@ if SAVE_HORIZONTAL:
     mapping_h = get_axes_mapping_fig1_2(ax1_h, is_horizontal=True)
     draw_fig1_content(mapping_h)
     plt.tight_layout(rect=[0, 0.03, 1, 0.97])
-    fig1_h.savefig(os.path.join(dir_horz, file_name_1), dpi=300, bbox_inches='tight')
+    fig1_h.savefig(os.path.join(dir_horz, file_name_1), dpi=150, bbox_inches='tight', facecolor='white')
     print(f"[HORZ] Fig 1 Saved: {os.path.join(dir_horz, file_name_1)}")
     plt.close(fig1_h)
 
@@ -493,7 +493,7 @@ def draw_fig2_content(ax_map):
 
 
 # --- GENERAZIONE FIGURA 2 ---
-file_name_2 = f"{dist_string}_2pdf.png"
+file_name_2 = f"{dist_string}_2pdf.jpg"
 
 # 1. Verticale
 if SAVE_VERTICAL:
@@ -502,7 +502,7 @@ if SAVE_VERTICAL:
     mapping_v = get_axes_mapping_fig1_2(ax2_v, is_horizontal=False)
     draw_fig2_content(mapping_v)
     plt.tight_layout(rect=[0, 0.03, 1, 0.97])
-    fig2_v.savefig(os.path.join(dir_vert, file_name_2), dpi=300, bbox_inches='tight')
+    fig2_v.savefig(os.path.join(dir_vert, file_name_2), dpi=150, bbox_inches='tight', facecolor='white')
     print(f"[VERT] Fig 2 Saved: {os.path.join(dir_vert, file_name_2)}")
     plt.close(fig2_v)
 
@@ -513,7 +513,7 @@ if SAVE_HORIZONTAL:
     mapping_h = get_axes_mapping_fig1_2(ax2_h, is_horizontal=True)
     draw_fig2_content(mapping_h)
     plt.tight_layout(rect=[0, 0.03, 1, 0.97])
-    fig2_h.savefig(os.path.join(dir_horz, file_name_2), dpi=300, bbox_inches='tight')
+    fig2_h.savefig(os.path.join(dir_horz, file_name_2), dpi=150, bbox_inches='tight', facecolor='white')
     print(f"[HORZ] Fig 2 Saved: {os.path.join(dir_horz, file_name_2)}")
     plt.close(fig2_h)
 
@@ -578,26 +578,19 @@ def draw_fig3_content(ax_map):
 
 
 # --- GENERAZIONE FIGURA 3 ---
-file_name_3 = f"{dist_string}_3bias_tradeoff.png"
+file_name_3 = f"{dist_string}_3bias_tradeoff.jpg"
 
 # 1. Verticale (Standard: 1 riga, 3 colonne)
-'''if SAVE_VERTICAL:
-    fig3_v, ax3_v = plt.subplots(1, 3, figsize=(18, 5))
-    fig3_v.suptitle(f"Metric Sensitivity vs Degree N (Avg over {NUM_SIMULATIONS} runs) - {nome_dist}", fontsize=14)
-    map_v = get_axes_mapping_fig3(ax3_v, is_horizontal_mode=False)
+if SAVE_HORIZONTAL or SAVE_VERTICAL:
+    fig3, ax3 = plt.subplots(1, 3, figsize=(18, 5))
+    fig3.suptitle(f"Metric Sensitivity vs Degree N (Avg over {NUM_SIMULATIONS} runs) - {nome_dist}", fontsize=14)
+    map_v = get_axes_mapping_fig3(ax3, is_horizontal_mode=False)
     draw_fig3_content(map_v)
     plt.tight_layout()
-    fig3_v.savefig(os.path.join(dir_vert, file_name_3), dpi=300, bbox_inches='tight')
-    print(f"[VERT] Fig 3 Saved: {os.path.join(dir_vert, file_name_3)}")
-    plt.close(fig3_v)'''
-
-# 2. Orizzontale (Trasposto: 3 righe, 1 colonna)
-if SAVE_HORIZONTAL or SAVE_VERTICAL:
-    fig3_h, ax3_h = plt.subplots(3, 1, figsize=(6, 18))  # Layout verticale per la cartella orizzontale
-    fig3_h.suptitle(f"Metric Sensitivity - {nome_dist}", fontsize=14)
-    map_h = get_axes_mapping_fig3(ax3_h, is_horizontal_mode=True)
-    draw_fig3_content(map_h)
-    plt.tight_layout(rect=[0, 0.03, 1, 0.97])
-    fig3_h.savefig(os.path.join(dir_horz, file_name_3), dpi=300, bbox_inches='tight')
-    print(f"Fig 3 Saved: {os.path.join(dir_horz, file_name_3)}")
-    plt.close(fig3_h)
+    if SAVE_VERTICAL:
+        fig3.savefig(os.path.join(dir_vert, file_name_3), dpi=150, bbox_inches='tight', facecolor='white')
+        print(f"[VERT] Fig 3 Saved: {os.path.join(dir_vert, file_name_3)}")
+    if SAVE_HORIZONTAL:
+        fig3.savefig(os.path.join(dir_horz, file_name_3), dpi=150, bbox_inches='tight', facecolor='white')
+        print(f"[HORZ] Fig 3 Saved: {os.path.join(dir_horz, file_name_3)}")
+    plt.close(fig3)
