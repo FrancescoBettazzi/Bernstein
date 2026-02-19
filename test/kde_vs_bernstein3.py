@@ -23,7 +23,7 @@ from KumaraswamyDist import KumaraswamyDist
 # DIST_KEY = 'lognormal_0_2'
 DIST_KEYS = ['u', 'n', 'k', 'k_d', 'k_u', 'erlang', 'weibull_1_5', 'weibull_0_5', 'lognormal_1_8', 'lognormal_0_8', 'lognormal_0_2']
 
-M = 100  # Numero campioni
+M = 200  # Numero campioni
 NUM_SIMULATIONS = 100  # Totale simulazioni
 NUM_POINTS = 500  # Risoluzione griglia
 N_PLOT_LINES = 50  # Quante linee disegnare nel grafico "Spaghetti"
@@ -183,21 +183,9 @@ for DIST_KEY in DIST_KEYS:
             pdf_bern = calculate_bernstein_exp_pdf(ecdf, N_pdf, x_eval)
         else:
             # Usa la variante standard
-
-            # MODIFICA QUI:
-            # Se la distribuzione ha un supporto limitato NOTO (come Kumaraswamy o Uniforme),
-            # usa i limiti teorici, non quelli campionari.
-            if DIST_KEY in ['k', 'k_d', 'k_u']:
-                a_b, b_b = 0.0, 1.0
-            elif DIST_KEY == 'u':
-                a_b, b_b = 5.0, 15.0  # O i limiti che hai impostato
-            elif DIST_KEY == 'n':
-                a_b, b_b = -3.2, 3.2  # O i limiti che hai impostato
-            else:
-                # Solo se non conosciamo i limiti usiamo min/max campionari
-                a_b, b_b = np.min(campioni), np.max(campioni)
-
-            pdf_bern = calculate_bernstein_pdf(ecdf, N_pdf, a_b, b_b, x_eval)
+            # Serve definire a, b dai campioni per il supporto locale
+            a_samp, b_samp = np.min(campioni), np.max(campioni)
+            pdf_bern = calculate_bernstein_pdf(ecdf, N_pdf, a_samp, b_samp, x_eval)
 
         # 5. KDE ESTIMATION
         kde_func = gaussian_kde(campioni)

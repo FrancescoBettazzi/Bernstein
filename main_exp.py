@@ -346,7 +346,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 # Parametri Booleani
 SAVE_VERTICAL = True  # Formato Originale (3x2)
-SAVE_HORIZONTAL = True  # Formato Nuovo (2x3)
+SAVE_HORIZONTAL = False  # Formato Nuovo (2x3)
 
 today_str = datetime.now().strftime("%Y%m%d")
 

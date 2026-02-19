@@ -59,8 +59,8 @@ elif scelta_dist == 'k':
     k_b = 0.5
     '''
 
-    k_a = 1
-    k_b = 3
+    k_a = 2
+    k_b = 5
 
     distribuzione = KumaraswamyDist(a=k_a, b=k_b)
     nome_dist = f"Kumaraswamy(a={k_a}, b={k_b})"
@@ -118,6 +118,14 @@ for i in range(NUM_SIMULATIONS):
 
     # B. Local Support
     a, b = campioni_ordinati[0], campioni_ordinati[-1]
+
+    if scelta_dist == 'k':
+        a, b = 0.0, 1.0
+    elif scelta_dist == 'u':
+        a, b = 5.0, 15.0
+    elif scelta_dist == 'n':
+        a, b = -3.2, 3.2
+
     global_min_x = min(global_min_x, a)
     global_max_x = max(global_max_x, b)
 
@@ -334,7 +342,7 @@ def add_stat_lines(ax, mean_val, median_val, std_val, label, color='darkorange',
 
 # Parametri Booleani richiesti
 SAVE_VERTICAL = True  # Formato Originale (3x2)
-SAVE_HORIZONTAL = True  # Formato Nuovo (2x3)
+SAVE_HORIZONTAL = False  # Formato Nuovo (2x3)
 
 today_str = datetime.now().strftime("%Y%m%d")
 
